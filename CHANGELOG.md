@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- Add public package metadata for the GitHub repository and npm registry.
+
 ## 0.1.0
 
 - Initial direct Jira CLI port from `@khanglvm/jira-mcp`.
