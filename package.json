@@ -1,0 +1,30 @@
+{
+  "name": "@khanglvm/jira-cli",
+  "version": "0.1.0",
+  "description": "Agent-optimized direct CLI for legacy Jira Server REST API",
+  "type": "module",
+  "bin": {
+    "jira-cli": "bin/jira-cli.js",
+    "jira-agent": "bin/jira-cli.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "CHANGELOG.md",
+    "skill/"
+  ],
+  "scripts": {
+    "start": "node ./bin/jira-cli.js",
+    "check": "node ./bin/jira-cli.js --help",
+    "test": "node --test ./test/**/*.test.js",
+    "prepublishOnly": "npm run check && npm test"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "dependencies": {
+    "@napi-rs/keyring": "^1.2.0",
+    "commander": "^13.1.0"
+  }
+}
