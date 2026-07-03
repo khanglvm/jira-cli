@@ -23,12 +23,7 @@ jira-cli profile list
 jira-cli profile test
 ```
 
-If no profile exists, import the saved Claude Code MCP credentials:
-
-```bash
-jira-cli profile import-claude --default
-jira-cli profile test
-```
+If no profile exists, configure one with `jira-cli profile add <id> --base-url ... --username ... --password ... --default`.
 
 ## Command Policy
 

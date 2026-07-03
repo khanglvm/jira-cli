@@ -3,7 +3,7 @@ import { Command } from "commander";
 import { JiraClient } from "./jira-client.js";
 import { ResultStore } from "./result-store.js";
 import { TOOL_DEFINITIONS, invokeTool, resolveToolName } from "./tools.js";
-import { buildProfile, defaultConfigPath, getProfile, listProfiles, loadConfig, readClaudeJiraEnv, redactProfile, saveConfig } from "./config-store.js";
+import { buildProfile, defaultConfigPath, getProfile, listProfiles, loadConfig, redactProfile, saveConfig } from "./config-store.js";
 import { hydrateProfileFromKeychain, removeProfileFromKeychain, secureProfileForStorage } from "./secure-keyring.js";
 import { readJsonArg, toInteger } from "./utils.js";
 
@@ -101,37 +101,6 @@ export async function runCli(argv = process.argv) {
       }
       await saveConfig(opts.config, config);
       await emitWith(cmd, { ok: true, profile: redactProfile({ id, ...secured.profile }), keychain: secured.keychain }, "profile-add");
-    });
-
-  profile.command("import-claude")
-    .description("Import Jira credentials from Claude Code MCP configuration")
-    .option("--claude-config <path>", "Claude config path")
-    .option("--server <name>", "MCP server key", "jira-mcp")
-    .option("--id <id>", "Profile id")
-    .option("--name <name>", "Profile display name")
-    .option("--default", "Set imported profile as default")
-    .action(async (cmd) => {
-      const opts = commandOptions(cmd);
-      const local = localOptions(cmd);
-      const found = await readClaudeJiraEnv({ claudeConfigPath: local.claudeConfig, serverName: local.server });
-      const id = local.id || "claude";
-      const config = await loadConfig(opts.config);
-      const built = buildProfile({
-        id,
-        name: local.name || "Claude Jira MCP",
-        baseUrl: found.baseUrl,
-        username: found.username,
-        password: found.password,
-        apiVersion: found.apiVersion,
-        keywords: ["claude", "jira", found.username].filter(Boolean),
-      });
-      const secured = secureProfileForStorage({ configPath: opts.config, profileId: id, profile: built });
-      config.profiles[id] = secured.profile;
-      if (local.default || !config.defaultProfile) {
-        config.defaultProfile = id;
-      }
-      await saveConfig(opts.config, config);
-      await emitWith(cmd, { ok: true, importedFrom: found.file, serverName: found.serverName, profile: redactProfile({ id, ...secured.profile }), keychain: secured.keychain }, "profile-import-claude");
     });
 
   profile.command("list")

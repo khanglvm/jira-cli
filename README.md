@@ -10,14 +10,7 @@ npm install -g @khanglvm/jira-cli
 
 ## Configure
 
-Import the existing Claude Code MCP credentials:
-
-```bash
-jira-cli profile import-claude --default
-jira-cli profile test
-```
-
-Or add a profile manually:
+Add a profile:
 
 ```bash
 jira-cli profile add work \

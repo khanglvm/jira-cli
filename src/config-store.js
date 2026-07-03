@@ -1,5 +1,4 @@
 import fs from "node:fs/promises";
-import fsSync from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { CliError } from "./errors.js";
@@ -148,7 +147,7 @@ export function getProfile(config, explicitId) {
       availableProfiles: ids,
     });
   }
-  throw new CliError("No Jira profiles configured. Use `jira-cli profile add <id> ...` or `jira-cli profile import-claude` first.", {
+  throw new CliError("No Jira profiles configured. Use `jira-cli profile add <id> ...` first.", {
     code: "PROFILE_NOT_CONFIGURED",
   });
 }
@@ -168,30 +167,4 @@ export function redactProfile(profile) {
     };
   }
   return clone;
-}
-
-export async function readClaudeJiraEnv({ claudeConfigPath, serverName = "jira-mcp" } = {}) {
-  const file = claudeConfigPath || path.join(os.homedir(), ".claude.json");
-  if (!fsSync.existsSync(file)) {
-    throw new CliError(`Claude config not found: ${file}`, { code: "CLAUDE_CONFIG_NOT_FOUND", file });
-  }
-  const parsed = JSON.parse(await fs.readFile(file, "utf8"));
-  const servers = parsed?.mcpServers || parsed?.mcp?.servers || {};
-  const server = servers[serverName] || servers["@khanglvm/jira-mcp"] || servers.jira || servers["jira-cli"];
-  if (!server?.env) {
-    throw new CliError(`No Jira MCP env found in ${file}`, {
-      code: "CLAUDE_JIRA_ENV_NOT_FOUND",
-      serverName,
-      availableServers: Object.keys(servers),
-    });
-  }
-  const env = server.env;
-  return {
-    file,
-    serverName,
-    baseUrl: env.JIRA_BASE_URL,
-    username: env.JIRA_USERNAME,
-    password: env.JIRA_PASSWORD,
-    apiVersion: env.JIRA_API_VERSION || "2",
-  };
 }
