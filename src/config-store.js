@@ -26,6 +26,16 @@ export function defaultTmpDir() {
   return path.join(os.homedir(), ".cache", "jira-cli", "tmp");
 }
 
+export function defaultCacheDir() {
+  if (process.env.JIRA_CLI_CACHE_DIR) {
+    return path.resolve(process.env.JIRA_CLI_CACHE_DIR);
+  }
+  if (process.env.JIRA_AGENT_CACHE_DIR) {
+    return path.resolve(process.env.JIRA_AGENT_CACHE_DIR);
+  }
+  return path.join(os.homedir(), ".cache", "jira-cli");
+}
+
 export function blankConfig() {
   return {
     version: CONFIG_VERSION,
