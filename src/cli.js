@@ -126,6 +126,11 @@ const EASY_RECIPES = [
     toolCall: "jira-cli invoke comments.add-with-attachments --perform-action --args '{\"issueKey\":\"PROJ-123\",\"body\":\"Done.\",\"attachments\":[\"screenshot.png\"],\"performAction\":true}'",
   },
   {
+    name: "comment-with-inline-images",
+    command: "jira-cli comment PROJ-123 --body \"Evidence:\" --inline-image screenshot.png --perform-action",
+    toolCall: "jira-cli invoke comments.add-with-attachments --perform-action --args '{\"issueKey\":\"PROJ-123\",\"body\":\"Evidence:\",\"inlineImages\":[\"screenshot.png\"],\"performAction\":true}'",
+  },
+  {
     name: "assign-to-me",
     command: "jira-cli assign PROJ-123 me --perform-action",
     toolCall: "jira-cli invoke issue.assign --perform-action --args '{\"issueKey\":\"PROJ-123\",\"username\":\"me\",\"performAction\":true}'",
@@ -180,6 +185,7 @@ Common agent shortcuts:
   jira-cli ticket assign PROJ-123 "Khang Le" --board 130 --resolve-only
   jira-cli move PROJ-123 "Done" --comment "Fixed." --perform-action
   jira-cli comment PROJ-123 --body "Done." --attach screenshot.png --perform-action
+  jira-cli comment PROJ-123 --body "Evidence:" --inline-image screenshot.png --perform-action
   jira-cli invoke comments.add-with-attachments --perform-action --args '{"issueKey":"PROJ-123","body":"Done.","attachments":["screenshot.png"],"performAction":true}'
 
 Run 'jira-cli easy' for JSON recipes.
@@ -506,11 +512,13 @@ Run 'jira-cli easy' for JSON recipes.
     });
 
   program.command("comment <issueKey>")
-    .description("Quick add a comment, optionally with attachments")
+    .description("Quick add a comment, optionally with attachments or inline images")
     .option("--body <text>", "Comment body")
     .option("--body-file <path>", "Read comment body from file")
     .option("--stdin", "Read comment body from stdin")
     .option("--attach <path>", "Attach a local file path (repeatable)", appendOption, [])
+    .option("--inline-image <path>", "Attach an image and append Jira wiki markup (repeatable)", appendOption, [])
+    .option("--inline-image-mode <mode>", "Inline image mode: thumbnail|full", "thumbnail")
     .option("--perform-action", "Execute the mutation")
     .action(async function (issueKey) {
       const cmd = this;
@@ -525,6 +533,8 @@ Run 'jira-cli easy' for JSON recipes.
         issueKey,
         body,
         attachments: local.attach || [],
+        inlineImages: local.inlineImage || [],
+        inlineImageMode: local.inlineImageMode,
         performAction: !!local.performAction,
       }, { performAction: !!local.performAction });
       await emitWith(cmd, { ok: true, tool: "jira_comment_with_attachments", result }, "comment");

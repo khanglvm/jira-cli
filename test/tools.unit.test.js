@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { invokeTool, resolveToolName } from "../src/tools.js";
+import { invokeTool, resolveToolName, TOOL_DEFINITIONS } from "../src/tools.js";
 
 test("resolveToolName supports short aliases", () => {
   assert.equal(resolveToolName("search"), "jira_search");
@@ -108,6 +108,78 @@ test("comment-with-attachments uploads files and comments in one tool call", asy
   assert.equal(result.comment.id, "100");
   assert.equal(result.attachments.total, 1);
   assert.equal(result.attachments.files[0].filename, "evidence.txt");
+  assert.equal(result.inlineImages.total, 0);
+});
+
+test("comment inline images upload first and append thumbnail wiki markup by default", async () => {
+  const calls = [];
+  const client = {
+    async uploadAttachment(issueKey, filePath, filename) {
+      calls.push(["upload", issueKey, filePath, filename]);
+      return [{ id: String(calls.length), filename: filename || filePath.split("/").pop(), size: 2, content: "mock://image" }];
+    },
+    async addComment(issueKey, body) {
+      calls.push(["comment", issueKey, body]);
+      return { id: "100", author: { displayName: "Alice" }, created: "now" };
+    },
+  };
+  const result = await invokeTool(client, "comments.add-with-attachments", {
+    issueKey: "ABC-1",
+    body: "Evidence:",
+    attachments: ["/tmp/notes.txt"],
+    inlineImages: [
+      "/tmp/browser.png",
+      { path: "/tmp/mobile.png", filename: "mobile evidence.png" },
+    ],
+    performAction: true,
+  }, { performAction: true });
+  assert.deepEqual(calls, [
+    ["upload", "ABC-1", "/tmp/notes.txt", undefined],
+    ["upload", "ABC-1", "/tmp/browser.png", undefined],
+    ["upload", "ABC-1", "/tmp/mobile.png", "mobile evidence.png"],
+    ["comment", "ABC-1", "Evidence:\n\n!browser.png|thumbnail!\n!mobile evidence.png|thumbnail!"],
+  ]);
+  assert.equal(result.attachments.total, 3);
+  assert.deepEqual(result.inlineImages.files.map((image) => image.markup), [
+    "!browser.png|thumbnail!",
+    "!mobile evidence.png|thumbnail!",
+  ]);
+});
+
+test("comment inline images support explicit full mode without changing attachment-only bodies", async () => {
+  const bodies = [];
+  const client = {
+    async uploadAttachment(_issueKey, filePath) {
+      return [{ id: filePath, filename: filePath.split("/").pop(), size: 2, content: "mock://file" }];
+    },
+    async addComment(_issueKey, body) {
+      bodies.push(body);
+      return { id: String(bodies.length), created: "now" };
+    },
+  };
+  await invokeTool(client, "comments.add-with-attachments", {
+    issueKey: "ABC-1",
+    body: "Attachment only",
+    attachments: ["/tmp/notes.txt"],
+    performAction: true,
+  }, { performAction: true });
+  await invokeTool(client, "comments.add-with-attachments", {
+    issueKey: "ABC-1",
+    body: "Full image",
+    inlineImages: ["/tmp/evidence.png"],
+    inlineImageMode: "full",
+    performAction: true,
+  }, { performAction: true });
+  assert.deepEqual(bodies, [
+    "Attachment only",
+    "Full image\n\n!evidence.png!",
+  ]);
+});
+
+test("comment tool schema exposes inline image modes", () => {
+  const tool = TOOL_DEFINITIONS.find((item) => item.name === "jira_comment_with_attachments");
+  assert.deepEqual(tool.inputSchema.properties.inlineImageMode.enum, ["thumbnail", "full"]);
+  assert.equal(tool.inputSchema.properties.inlineImageMode.default, "thumbnail");
 });
 
 test("transition-by-name resolves transition names before applying", async () => {

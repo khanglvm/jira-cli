@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.1.4
+
+- Add opt-in inline comment images through `comment --inline-image` and
+  `jira_comment_with_attachments.inlineImages`, using Jira wiki thumbnails by
+  default with an explicit full-size mode.
+- Preserve attachment-only comments while guaranteeing that inline images are
+  uploaded before their generated markup is posted.
+
+## 0.1.3
+
 - Add quick agent commands for common Jira flows: `easy`, `mine`, `show`, `comment`, and `attach`.
 - Add attachment upload support plus combined `jira_comment_with_attachments` / `comments.add-with-attachments` for one-call comment-with-files workflows.
 - Add broader Jira Server 7.x and Jira Agile low-level tools for metadata, users, assignment, labels, comments, transitions, attachments, votes, watchers, worklogs, issue links, remote links, boards, sprints, and generic REST escape hatches.

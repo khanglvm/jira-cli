@@ -189,6 +189,47 @@ async function addAttachments(client, args, { required = false } = {}) {
   return uploaded.map(cleanAttachment);
 }
 
+function inlineImageInputs(args) {
+  const defaultMode = args.inlineImageMode || "thumbnail";
+  const inputs = toArray(args.inlineImages).map((item) => {
+    const input = typeof item === "string" ? { path: item } : (item || {});
+    return {
+      path: input.path || input.filePath,
+      filename: input.filename,
+      mode: input.mode || defaultMode,
+    };
+  }).filter((item) => item.path);
+
+  for (const input of inputs) {
+    if (!["thumbnail", "full"].includes(input.mode)) {
+      throw new Error(`Unsupported inline image mode "${input.mode}". Use thumbnail or full.`);
+    }
+  }
+  return inputs;
+}
+
+async function addInlineImages(client, args) {
+  const issueKey = requireArg(args, "issueKey");
+  const images = [];
+  for (const input of inlineImageInputs(args)) {
+    const result = await client.uploadAttachment(issueKey, input.path, input.filename);
+    const uploaded = (Array.isArray(result) ? result : [result]).map(cleanAttachment);
+    for (const file of uploaded) {
+      const markup = input.mode === "full"
+        ? `!${file.filename}!`
+        : `!${file.filename}|thumbnail!`;
+      images.push({ ...file, mode: input.mode, markup });
+    }
+  }
+  return images;
+}
+
+function appendInlineImages(body, images) {
+  if (images.length === 0) return body;
+  const separator = body.endsWith("\n\n") ? "" : body.endsWith("\n") ? "\n" : "\n\n";
+  return `${body}${separator}${images.map((image) => image.markup).join("\n")}`;
+}
+
 async function resolveUsername(client, value) {
   if (value === undefined) return undefined;
   if (value === null || value === "none" || value === "unassigned") return null;
@@ -357,7 +398,32 @@ export const TOOL_DEFINITIONS = [
   def("jira_add_comment", "comments", true, "Add a comment to an issue. Requires performAction:true.", { issueKey: p.issueKey, body: { type: "string" }, performAction: p.performAction }, ["issueKey", "body"]),
   def("jira_update_comment", "comments", true, "Update a comment body. Requires performAction:true.", { issueKey: p.issueKey, commentId: { type: "string" }, body: { type: "string" }, performAction: p.performAction }, ["issueKey", "commentId", "body"]),
   def("jira_delete_comment", "comments", true, "Delete a comment. Requires performAction:true.", { issueKey: p.issueKey, commentId: { type: "string" }, performAction: p.performAction }, ["issueKey", "commentId"]),
-  def("jira_comment_with_attachments", "common", true, "Upload local files then add a comment in one call. Requires performAction:true.", { issueKey: p.issueKey, body: { type: "string" }, attachments: { type: "array", items: { oneOf: [{ type: "string" }, { type: "object" }] } }, filePath: { type: "string" }, filename: { type: "string" }, performAction: p.performAction }, ["issueKey", "body"]),
+  def("jira_comment_with_attachments", "common", true, "Upload local files then add a comment in one call. inlineImages appends Jira wiki image markup after upload; thumbnail is the default. Requires performAction:true.", {
+    issueKey: p.issueKey,
+    body: { type: "string" },
+    attachments: { type: "array", items: { oneOf: [{ type: "string" }, { type: "object" }] } },
+    filePath: { type: "string" },
+    filename: { type: "string" },
+    inlineImages: {
+      type: "array",
+      items: {
+        oneOf: [
+          { type: "string" },
+          {
+            type: "object",
+            properties: {
+              path: { type: "string" },
+              filePath: { type: "string" },
+              filename: { type: "string" },
+              mode: { type: "string", enum: ["thumbnail", "full"] },
+            },
+          },
+        ],
+      },
+    },
+    inlineImageMode: { type: "string", enum: ["thumbnail", "full"], default: "thumbnail" },
+    performAction: p.performAction,
+  }, ["issueKey", "body"]),
   def("jira_get_transitions", "transitions", false, "List available workflow transitions for an issue.", { issueKey: p.issueKey }, ["issueKey"]),
   def("jira_transition_issue", "transitions", true, "Move an issue via workflow transition id. Requires performAction:true.", { issueKey: p.issueKey, transitionId: { type: "string" }, comment: { type: "string" }, fields: { type: "object" }, update: { type: "object" }, performAction: p.performAction }, ["issueKey", "transitionId"]),
   def("jira_transition_issue_by_name", "common", true, "Move an issue by transition id, transition name, or destination status. Requires performAction:true.", { issueKey: p.issueKey, transition: { type: "string" }, comment: { type: "string" }, fields: { type: "object" }, update: { type: "object" }, performAction: p.performAction }, ["issueKey", "transition"]),
@@ -624,8 +690,17 @@ export async function invokeTool(client, toolName, rawArgs = {}, options = {}) {
       const issueKey = requireArg(args, "issueKey");
       const body = requireArg(args, "body");
       const attachments = await addAttachments(client, args);
-      const comment = await client.addComment(issueKey, body);
-      return { success: true, issueKey, comment: { id: comment.id, author: comment.author?.displayName ?? null, created: comment.created }, attachments: { total: attachments.length, files: attachments } };
+      const inlineImages = await addInlineImages(client, args);
+      const commentBody = appendInlineImages(body, inlineImages);
+      const comment = await client.addComment(issueKey, commentBody);
+      const files = [...attachments, ...inlineImages.map(({ mode: _mode, markup: _markup, ...file }) => file)];
+      return {
+        success: true,
+        issueKey,
+        comment: { id: comment.id, author: comment.author?.displayName ?? null, created: comment.created },
+        attachments: { total: files.length, files },
+        inlineImages: { total: inlineImages.length, files: inlineImages },
+      };
     }
     case "jira_get_transitions": {
       const result = await client.getTransitions(requireArg(args, "issueKey"));

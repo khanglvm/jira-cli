@@ -48,6 +48,8 @@ jira-cli move PROJ-123 "Done" --comment "Fixed." --perform-action
 jira-cli label PROJ-123 --add agent-reviewed --perform-action
 jira-cli comment PROJ-123 --body "Investigating." --perform-action
 jira-cli comment PROJ-123 --body "Done." --attach screenshot.png --attach notes.txt --perform-action
+jira-cli comment PROJ-123 --body "Evidence:" --inline-image screenshot.png --perform-action
+jira-cli comment PROJ-123 --body "Full-size evidence:" --inline-image screenshot.png --inline-image-mode full --perform-action
 jira-cli worklog PROJ-123 30m --comment "Investigated logs" --perform-action
 jira-cli link PROJ-123 PROJ-456 --type Blocks --perform-action
 jira-cli remote-link PROJ-123 "https://ci.example/build/1" "CI build" --perform-action
@@ -80,6 +82,36 @@ jira-cli invoke comments.add-with-attachments \
   --args '{"issueKey":"PROJ-123","body":"Done.","attachments":["screenshot.png","notes.txt"],"performAction":true}'
 ```
 
+To render uploaded evidence inside a Jira Server 7.x comment, use
+`--inline-image` instead of `--attach`. The CLI uploads every file first, then
+appends Jira wiki image markup to the comment body. Thumbnails are the default:
+
+```bash
+jira-cli comment PROJ-123 \
+  --body "Evidence:" \
+  --inline-image screenshot.png \
+  --inline-image mobile.png \
+  --perform-action
+```
+
+This posts a body ending in:
+
+```text
+!screenshot.png|thumbnail!
+!mobile.png|thumbnail!
+```
+
+Use `--inline-image-mode full` for full-size `!filename!` markup. Plain
+`--attach` remains attachment-only and does not alter the comment body. The
+matching tool input is `inlineImages`, with an optional global
+`inlineImageMode` or per-file `mode`:
+
+```bash
+jira-cli invoke comments.add-with-attachments \
+  --perform-action \
+  --args '{"issueKey":"PROJ-123","body":"Evidence:","inlineImages":["screenshot.png",{"path":"mobile.png","filename":"mobile-evidence.png","mode":"full"}],"performAction":true}'
+```
+
 ## Profiles
 
 Profiles let one machine hold multiple Jira workspaces/accounts:
@@ -108,6 +140,9 @@ Run `jira-cli tools list` for JSON contracts.
 
 Attachment uploads use Jira's `/attachments` endpoint and require
 `--perform-action` plus `"performAction": true`, like other mutations.
+The combined comment tool accepts `inlineImages` to append uploaded images as
+Jira wiki markup; its default `inlineImageMode` is `thumbnail`, while `full`
+omits the `|thumbnail` suffix.
 Attachment downloads save bytes to a local temp path by default. Pass
 `"inlineBase64": true` only when an agent explicitly needs the bytes inline.
 

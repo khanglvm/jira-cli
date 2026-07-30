@@ -1,6 +1,6 @@
 {
   "name": "@khanglvm/jira-cli",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Agent-optimized direct CLI for legacy Jira Server REST API",
   "type": "module",
   "bin": {

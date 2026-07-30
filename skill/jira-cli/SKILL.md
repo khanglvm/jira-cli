@@ -56,6 +56,7 @@ jira-cli move PROJ-123 "Done" --comment "Fixed." --perform-action
 jira-cli label PROJ-123 --add agent-reviewed --perform-action
 jira-cli comment PROJ-123 --body "Done." --perform-action
 jira-cli comment PROJ-123 --body "Done." --attach screenshot.png --attach notes.txt --perform-action
+jira-cli comment PROJ-123 --body "Evidence:" --inline-image screenshot.png --perform-action
 jira-cli worklog PROJ-123 30m --comment "Investigated logs" --perform-action
 jira-cli link PROJ-123 PROJ-456 --type Blocks --perform-action
 jira-cli remote-link PROJ-123 "https://ci.example/build/1" "CI build" --perform-action
@@ -106,6 +107,25 @@ jira-cli invoke comments.add-with-attachments \
   --perform-action \
   --args '{"issueKey":"PROJ-123","body":"Done.","attachments":["screenshot.png","notes.txt"],"performAction":true}'
 ```
+
+For Jira Server 7.x evidence images rendered inside the comment, use the opt-in
+`--inline-image` path. It uploads first, then appends `!filename|thumbnail!` by
+default. Use `--inline-image-mode full` for `!filename!`:
+
+```bash
+jira-cli comment PROJ-123 \
+  --body "Evidence:" \
+  --inline-image screenshot.png \
+  --perform-action
+
+jira-cli invoke comments.add-with-attachments \
+  --perform-action \
+  --args '{"issueKey":"PROJ-123","body":"Evidence:","inlineImages":["screenshot.png"],"performAction":true}'
+```
+
+Plain `--attach` / `attachments` stays attachment-only and never changes the
+comment body. Tool callers may set `inlineImageMode` globally or use an object
+such as `{"path":"image.png","mode":"full"}` for one file.
 
 Attachment uploads require `--perform-action` plus `performAction:true`, like
 other mutations.
