@@ -1,18 +1,25 @@
-# @khanglvm/jira-cli
+# jira-cli
 
-Direct, profile-aware CLI for legacy Jira Server 7.x REST API v2. It ports the useful `@khanglvm/jira-mcp` tool surface into a short-lived CLI process so agents can call Jira without starting an MCP server.
+Work with Jira Server tickets from your terminal. See your open issues,
+search with JQL, add comments and screenshots, or move a ticket through its
+workflow. Short commands cover everyday tasks; JSON output works with scripts
+and AI agents.
 
-## Install
+Built for self-hosted Jira Server 7.x and REST API v2. This is an independent
+project, not an official Atlassian tool.
 
-```bash
+## Install and connect
+
+Requires Node.js 18.17 or newer and a Jira Server account.
+
+```sh
 npm install -g @khanglvm/jira-cli
 ```
 
-## Configure
+Set `JIRA_USERNAME` and `JIRA_PASSWORD` in your local environment, then replace
+the example URL with your Jira address:
 
-Add a profile:
-
-```bash
+```sh
 jira-cli profile add work \
   --base-url https://jira.example.com \
   --username "$JIRA_USERNAME" \
@@ -20,164 +27,50 @@ jira-cli profile add work \
   --default
 ```
 
-Credentials are stored in the OS keychain by default. Set `JIRA_CLI_KEYCHAIN_MODE=optional` to fall back to inline config if keychain access is unavailable, or `disabled` to store inline.
+Credentials go into your OS keychain by default. Keep them out of source files
+and chat messages. Use `jira-cli profile list` to see configured accounts.
 
-## Use
+## Start with your tickets
 
-```bash
-jira-cli invoke jira_get_current_user
-jira-cli invoke jira_search --args '{"jql":"assignee = currentUser() AND resolution IS EMPTY","maxResults":10}'
-jira-cli invoke jira_get_issue --args '{"issueKey":"PROJ-123"}'
-jira-cli batch --ops '[{"tool":"me"},{"tool":"search","args":{"jql":"updated >= -1d","maxResults":5}}]'
-```
-
-Quick agent shortcuts cover the common cases without hand-writing JSON:
-
-```bash
-jira-cli easy
-jira-cli mine --max-results 20
-jira-cli search --mine --open --max-results 20
-jira-cli search --reported --order-by "priority DESC"
+```sh
+jira-cli mine --max-results 10
 jira-cli show PROJ-123
-jira-cli create PROJ "Fix login edge case" --issue-type Bug --description "Steps..." --perform-action
-jira-cli assign PROJ-123 me --perform-action
-jira-cli users --board 130 --query khang
-jira-cli ticket assign PROJ-123 "Khang Le" --board 130 --resolve-only
-jira-cli ticket assign PROJ-123 "Khang Le" --board 130 --perform-action
-jira-cli move PROJ-123 "Done" --comment "Fixed." --perform-action
-jira-cli label PROJ-123 --add agent-reviewed --perform-action
-jira-cli comment PROJ-123 --body "Investigating." --perform-action
-jira-cli comment PROJ-123 --body "Done." --attach screenshot.png --attach notes.txt --perform-action
-jira-cli comment PROJ-123 --body "Evidence:" --inline-image screenshot.png --perform-action
-jira-cli comment PROJ-123 --body "Full-size evidence:" --inline-image screenshot.png --inline-image-mode full --perform-action
-jira-cli worklog PROJ-123 30m --comment "Investigated logs" --perform-action
-jira-cli link PROJ-123 PROJ-456 --type Blocks --perform-action
-jira-cli remote-link PROJ-123 "https://ci.example/build/1" "CI build" --perform-action
-jira-cli watch PROJ-123 --perform-action
-jira-cli vote PROJ-123 --perform-action
-jira-cli attach PROJ-123 screenshot.png notes.txt --perform-action
-jira-cli boards --project PROJ
-jira-cli sprints 42 --state active
+jira-cli search --reported --order-by "priority DESC"
 ```
 
-Mutations are dry-run by default:
+Replace `PROJ-123` with a real issue key. Changes are dry runs by default, so
+you can preview a comment before posting it:
 
-```bash
-jira-cli invoke jira_add_comment --args '{"issueKey":"PROJ-123","body":"Investigating."}'
+```sh
+jira-cli comment PROJ-123 --body "Investigating the login issue."
+jira-cli comment PROJ-123 --body "Investigating the login issue." --perform-action
 ```
 
-Execute a mutation only with an explicit action flag:
+Add `--inline-image screenshot.png` to include a screenshot in a comment.
+Profiles let you switch between Jira workspaces with `jira-cli profile use work`.
 
-```bash
-jira-cli invoke jira_add_comment \
-  --perform-action \
-  --args '{"issueKey":"PROJ-123","body":"Investigating.","performAction":true}'
-```
+## For AI agents
 
-For a single agent tool call that comments and uploads attachments:
-
-```bash
-jira-cli invoke comments.add-with-attachments \
-  --perform-action \
-  --args '{"issueKey":"PROJ-123","body":"Done.","attachments":["screenshot.png","notes.txt"],"performAction":true}'
-```
-
-To render uploaded evidence inside a Jira Server 7.x comment, use
-`--inline-image` instead of `--attach`. The CLI uploads every file first, then
-appends Jira wiki image markup to the comment body. Thumbnails are the default:
-
-```bash
-jira-cli comment PROJ-123 \
-  --body "Evidence:" \
-  --inline-image screenshot.png \
-  --inline-image mobile.png \
-  --perform-action
-```
-
-This posts a body ending in:
+Paste this into your coding assistant:
 
 ```text
-!screenshot.png|thumbnail!
-!mobile.png|thumbnail!
+Use jira-cli for my Jira task. If missing, install it with
+`npm install -g @khanglvm/jira-cli`. Check `jira-cli profile list` for setup.
+Run `jira-cli easy` for examples, then use mine, search, or show to read tickets.
+Preview changes first; pass --perform-action only for changes I have asked for.
+Use `jira-cli tools list` when you need the JSON tool contracts.
 ```
 
-Use `--inline-image-mode full` for full-size `!filename!` markup. Plain
-`--attach` remains attachment-only and does not alter the comment body. The
-matching tool input is `inlineImages`, with an optional global
-`inlineImageMode` or per-file `mode`:
+You can also install the [bundled skill](skill/jira-cli/SKILL.md):
 
-```bash
-jira-cli invoke comments.add-with-attachments \
-  --perform-action \
-  --args '{"issueKey":"PROJ-123","body":"Evidence:","inlineImages":["screenshot.png",{"path":"mobile.png","filename":"mobile-evidence.png","mode":"full"}],"performAction":true}'
+```sh
+npx skills add khanglvm/jira-cli --skill jira-cli -y
 ```
 
-## Profiles
+## More help
 
-Profiles let one machine hold multiple Jira workspaces/accounts:
+- [Usage guide](https://github.com/khanglvm/jira-cli/blob/main/docs/USAGE.md): JQL, attachments, assignment, workflow transitions, and all tools.
+- `jira-cli --help` lists commands; add `--help` to any command for its options.
+- [Changelog](CHANGELOG.md) · [MIT license](LICENSE)
 
-```bash
-jira-cli profile list
-jira-cli profile use work
-jira-cli --profile work invoke jira_list_projects
-```
-
-Config defaults to `~/.config/jira-cli/config.json`. Override with `JIRA_CLI_CONFIG` or `--config`.
-
-## Tools
-
-Run `jira-cli tools list` for JSON contracts.
-
-- Users/profile: `jira_get_current_user`, `jira_get_user`, `jira_search_users`, `jira_search_assignable_users`
-- Board users: `jira_get_board_users` lists assignable board/project users and caches results for 30 days by default
-- Metadata: `jira_get_server_info`, `jira_get_fields`, `jira_get_priorities`, `jira_get_statuses`, `jira_get_issue_types`, `jira_get_create_meta`, `jira_get_edit_meta`
-- Projects/issues: `jira_list_projects`, `jira_get_project`, `jira_search`, `jira_get_issue`, `jira_create_issue`, `jira_update_issue`, `jira_assign_issue`, `jira_update_labels`, `jira_delete_issue`
-- Comments/transitions/attachments: `jira_get_comments`, `jira_add_comment`, `jira_update_comment`, `jira_delete_comment`, `jira_comment_with_attachments`, `jira_get_transitions`, `jira_transition_issue`, `jira_transition_issue_by_name`, `jira_list_attachments`, `jira_add_attachment`, `jira_get_attachment`
-- Collaboration/time: `jira_get_voters`, `jira_add_vote`, `jira_remove_vote`, `jira_get_watchers`, `jira_add_watcher`, `jira_remove_watcher`, `jira_get_worklogs`, `jira_add_worklog`, `jira_update_worklog`, `jira_delete_worklog`
-- Links: `jira_get_issue_link_types`, `jira_get_issue_link`, `jira_link_issues`, `jira_delete_issue_link`, `jira_get_remote_links`, `jira_get_remote_link`, `jira_upsert_remote_link`, `jira_update_remote_link`, `jira_delete_remote_link`
-- Jira Agile: `jira_list_boards`, `jira_get_board`, `jira_get_board_issues`, `jira_get_backlog_issues`, `jira_get_sprints`, `jira_get_sprint_issues`, `jira_move_issues_to_sprint`, `jira_move_issues_to_backlog`
-- Escape hatches: `jira_get` for uncommon GET endpoints, `jira_request` for uncommon mutating endpoints
-
-Attachment uploads use Jira's `/attachments` endpoint and require
-`--perform-action` plus `"performAction": true`, like other mutations.
-The combined comment tool accepts `inlineImages` to append uploaded images as
-Jira wiki markup; its default `inlineImageMode` is `thumbnail`, while `full`
-omits the `|thumbnail` suffix.
-Attachment downloads save bytes to a local temp path by default. Pass
-`"inlineBase64": true` only when an agent explicitly needs the bytes inline.
-
-Use `jira_get` for low-level reads:
-
-```bash
-jira-cli invoke jira_get --args '{"path":"/serverInfo"}'
-jira-cli invoke jira_get --args '{"apiName":"agile","apiVersion":"1.0","path":"/board","query":{"maxResults":5}}'
-```
-
-Use `jira_request` only for endpoints that do not have a named tool yet:
-
-```bash
-jira-cli invoke jira_request \
-  --perform-action \
-  --args '{"method":"POST","path":"/issue/PROJ-123/votes","performAction":true}'
-```
-
-## Cached Users and Assignment
-
-`jira-cli users --board <id>` samples board issues to discover project keys, loads assignable users for those projects, and stores the result under `~/.cache/jira-cli` for 30 days by default. `jira-cli users --issue <key>` and plain `jira-cli assign <key> "Display Name"` use the issue assignable-user list by default. Use `--refresh-cache`, `--no-cache`, `--cache-dir`, or `--cache-ttl-days` when needed.
-
-```bash
-jira-cli users --board 130 --query khang
-jira-cli assign PROJ-123 "Khang Le" --resolve-only
-jira-cli ticket assign PROJ-123 "Khang Le" --board 130 --perform-action
-```
-
-The assign commands accept username, display name, or email. Add `--board` or
-`--project` when you want a reusable cached board/project list for inline
-resolution. `--resolve-only` verifies the cached match without changing the
-issue.
-
-## JQL Notes
-
-Use `statusCategory` for broad workflow buckets (`"To Do"`, `"In Progress"`, `"Done"`). Do not write `type = "To Do"`; `type`/`issuetype` is for `Bug`, `Task`, `Story`, `Epic`, and instance-specific issue types.
-
-Status changes must use workflow transitions. Call `jira_get_transitions` first, then call `jira_transition_issue` with the returned transition id.
+The older `jira-agent` command is an alias for `jira-cli`.
