@@ -5,8 +5,12 @@ search with JQL, add comments and screenshots, or move a ticket through its
 workflow. Short commands cover everyday tasks; JSON output works with scripts
 and AI agents.
 
-Built for self-hosted Jira Server 7.x and REST API v2. This is an independent
-project, not an official Atlassian tool.
+The focus is self-hosted Jira Server 7.x and REST API v2. It calls Jira
+directly from a short-lived process, so an agent can use the same `mine`,
+`show`, and `comment` commands you use, without running an MCP server. Writes start as
+dry runs: you can inspect the proposed action before choosing to send it.
+
+This is an independent project, not an official Atlassian tool.
 
 ## Install and connect
 
