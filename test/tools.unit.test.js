@@ -187,7 +187,10 @@ test("transition-by-name resolves transition names before applying", async () =>
   const client = {
     async getTransitions(issueKey) {
       calls.push(["getTransitions", issueKey]);
-      return { transitions: [{ id: "31", name: "Resolve Issue", to: { name: "Done" } }] };
+      return { transitions: [
+        { id: "21", name: "Finish Review", to: { name: "Done" } },
+        { id: "31", name: "Done", to: { name: "Closed" } },
+      ] };
     },
     async transitionIssue(issueKey, transitionId, comment) {
       calls.push(["transitionIssue", issueKey, transitionId, comment]);
@@ -205,6 +208,40 @@ test("transition-by-name resolves transition names before applying", async () =>
     ["transitionIssue", "ABC-1", "31", "Fixed"],
   ]);
   assert.equal(result.transitionId, "31");
+});
+
+test("transition-by-name refuses ambiguous destinations and accepts an exact id", async () => {
+  const calls = [];
+  const transitions = [
+    { id: "21", name: "Start Work", to: { name: "In Progress", statusCategory: { name: "In Progress" } } },
+    { id: "31", name: "Resume Work", to: { name: "In Progress", statusCategory: { name: "In Progress" } } },
+  ];
+  const client = {
+    async getTransitions() {
+      return { transitions };
+    },
+    async transitionIssue(issueKey, transitionId) {
+      calls.push([issueKey, transitionId]);
+    },
+  };
+
+  await assert.rejects(
+    invokeTool(client, "transitions.apply-by-name", {
+      issueKey: "ABC-1",
+      transition: "In Progress",
+      performAction: true,
+    }, { performAction: true }),
+    /Transition "In Progress" is ambiguous.*Use a transition id/,
+  );
+  assert.deepEqual(calls, []);
+
+  const result = await invokeTool(client, "transitions.apply-by-name", {
+    issueKey: "ABC-1",
+    transition: "31",
+    performAction: true,
+  }, { performAction: true });
+  assert.equal(result.transitionId, "31");
+  assert.deepEqual(calls, [["ABC-1", "31"]]);
 });
 
 test("label updates use Jira update operations", async () => {

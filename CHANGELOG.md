@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.1.5
+
+- Refuse ambiguous transition names or destination statuses. Callers receive the
+  matching transition ids and can retry with the intended id.
+
 ## 0.1.4
 
 - Add opt-in inline comment images through `comment --inline-image` and

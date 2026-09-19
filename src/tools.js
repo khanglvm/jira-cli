@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { JiraApiError } from "./errors.js";
+import { selectTransition } from "./transition-selector.js";
 import { compactValue, isMutatingTool, parseCsv } from "./utils.js";
 
 function requireArg(args, key) {
@@ -349,16 +350,9 @@ async function resolveAssignableUsername(client, args, options = {}) {
 
 async function transitionByName(client, args) {
   const issueKey = requireArg(args, "issueKey");
-  const wanted = String(requireArg(args, "transition")).toLowerCase();
+  const requested = requireArg(args, "transition");
   const result = await client.getTransitions(issueKey);
-  const match = result.transitions.find((transition) => (
-    String(transition.id).toLowerCase() === wanted ||
-    String(transition.name).toLowerCase() === wanted ||
-    String(transition.to?.name || "").toLowerCase() === wanted
-  ));
-  if (!match) {
-    throw new Error(`No transition matching "${args.transition}" for ${issueKey}. Available: ${result.transitions.map((item) => `${item.id}:${item.name}`).join(", ")}`);
-  }
+  const match = selectTransition(result.transitions, requested, issueKey);
   await client.transitionIssue(issueKey, match.id, args.comment, args.fields, args.update);
   return { success: true, issueKey, transitionId: match.id, transitionName: match.name, toStatus: match.to?.name ?? null };
 }
@@ -426,7 +420,7 @@ export const TOOL_DEFINITIONS = [
   }, ["issueKey", "body"]),
   def("jira_get_transitions", "transitions", false, "List available workflow transitions for an issue.", { issueKey: p.issueKey }, ["issueKey"]),
   def("jira_transition_issue", "transitions", true, "Move an issue via workflow transition id. Requires performAction:true.", { issueKey: p.issueKey, transitionId: { type: "string" }, comment: { type: "string" }, fields: { type: "object" }, update: { type: "object" }, performAction: p.performAction }, ["issueKey", "transitionId"]),
-  def("jira_transition_issue_by_name", "common", true, "Move an issue by transition id, transition name, or destination status. Requires performAction:true.", { issueKey: p.issueKey, transition: { type: "string" }, comment: { type: "string" }, fields: { type: "object" }, update: { type: "object" }, performAction: p.performAction }, ["issueKey", "transition"]),
+  def("jira_transition_issue_by_name", "common", true, "Move an issue by an unambiguous transition id, transition name, or destination status. Requires performAction:true.", { issueKey: p.issueKey, transition: { type: "string" }, comment: { type: "string" }, fields: { type: "object" }, update: { type: "object" }, performAction: p.performAction }, ["issueKey", "transition"]),
   def("jira_list_attachments", "attachments", false, "List attachments on an issue.", { issueKey: p.issueKey }, ["issueKey"]),
   def("jira_add_attachment", "attachments", true, "Upload one or more local files to an issue. Requires performAction:true.", { issueKey: p.issueKey, filePath: { type: "string" }, filename: { type: "string" }, attachments: { type: "array", items: { oneOf: [{ type: "string" }, { type: "object" }] } }, performAction: p.performAction }, ["issueKey"]),
   def("jira_get_attachment", "attachments", false, "Download an attachment by id, or by issueKey and filename.", { attachmentId: { type: "string" }, issueKey: p.issueKey, filename: { type: "string" }, inlineBase64: { type: "boolean" } }),
