@@ -1,6 +1,7 @@
 # jira-cli
 
-Work with Jira Server tickets from your terminal. See your open issues,
+Work with Jira Server tickets and release boards from your terminal. See your
+open issues, retrieve a complete project release from its Jira version link,
 search with JQL, add comments and screenshots, or move a ticket through its
 workflow. Short commands cover everyday tasks; JSON output works with scripts
 and AI agents.
@@ -39,6 +40,7 @@ and chat messages. Use `jira-cli profile list` to see configured accounts.
 ```sh
 jira-cli mine --max-results 10
 jira-cli show PROJ-123
+jira-cli release https://jira.example.com/projects/PROJ/versions/12345
 jira-cli search --reported --order-by "priority DESC"
 ```
 
@@ -60,7 +62,8 @@ Paste this into your coding assistant:
 ```text
 Use jira-cli for my Jira task. If missing, install it with
 `npm install -g @khanglvm/jira-cli`. Check `jira-cli profile list` for setup.
-Run `jira-cli easy` for examples, then use mine, search, or show to read tickets.
+Run `jira-cli easy` for examples. Use release for Jira project-version links and
+mine, search, or show for tickets.
 Preview changes first; pass --perform-action only for changes I have asked for.
 Use `jira-cli tools list` when you need the JSON tool contracts.
 ```

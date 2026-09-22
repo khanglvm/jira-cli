@@ -23,6 +23,7 @@ jira-cli mine --max-results 20
 jira-cli search --mine --open --max-results 20
 jira-cli search --reported --order-by "priority DESC"
 jira-cli show PROJ-123
+jira-cli release https://jira.example.com/projects/PROJ/versions/12345
 jira-cli create PROJ "Fix login edge case" --issue-type Bug --description "Steps..." --perform-action
 jira-cli assign PROJ-123 me --perform-action
 jira-cli users --board 130 --query khang
@@ -116,6 +117,7 @@ Run `jira-cli tools list` for JSON contracts.
 - Board users: `jira_get_board_users` lists assignable board/project users and caches results for 30 days by default
 - Metadata: `jira_get_server_info`, `jira_get_fields`, `jira_get_priorities`, `jira_get_statuses`, `jira_get_issue_types`, `jira_get_create_meta`, `jira_get_edit_meta`
 - Projects/issues: `jira_list_projects`, `jira_get_project`, `jira_search`, `jira_get_issue`, `jira_create_issue`, `jira_update_issue`, `jira_assign_issue`, `jira_update_labels`, `jira_delete_issue`
+- Releases: `jira_get_release_board` accepts a Jira project-version URL or numeric version id and returns version metadata, every directly assigned issue, hydrated subtasks, counts, and completeness evidence
 - Comments/transitions/attachments: `jira_get_comments`, `jira_add_comment`, `jira_update_comment`, `jira_delete_comment`, `jira_comment_with_attachments`, `jira_get_transitions`, `jira_transition_issue`, `jira_transition_issue_by_name`, `jira_list_attachments`, `jira_add_attachment`, `jira_get_attachment`
 - Collaboration/time: `jira_get_voters`, `jira_add_vote`, `jira_remove_vote`, `jira_get_watchers`, `jira_add_watcher`, `jira_remove_watcher`, `jira_get_worklogs`, `jira_add_worklog`, `jira_update_worklog`, `jira_delete_worklog`
 - Links: `jira_get_issue_link_types`, `jira_get_issue_link`, `jira_link_issues`, `jira_delete_issue_link`, `jira_get_remote_links`, `jira_get_remote_link`, `jira_upsert_remote_link`, `jira_update_remote_link`, `jira_delete_remote_link`
@@ -135,6 +137,14 @@ Use `jira_get` for low-level reads:
 ```bash
 jira-cli invoke jira_get --args '{"path":"/serverInfo"}'
 jira-cli invoke jira_get --args '{"apiName":"agile","apiVersion":"1.0","path":"/board","query":{"maxResults":5}}'
+```
+
+For a release board, use the named operation so pagination and subtask hydration
+stay inside one call:
+
+```bash
+jira-cli invoke release.get \
+  --args '{"releaseBoard":"https://jira.example.com/projects/PROJ/versions/12345"}'
 ```
 
 Use `jira_request` only for endpoints that do not have a named tool yet:

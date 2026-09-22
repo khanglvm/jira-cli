@@ -194,6 +194,18 @@ export class JiraClient {
     return this.request("GET", `/project/${encodeURIComponent(projectKey)}`);
   }
 
+  getVersion(versionId) {
+    return this.request("GET", `/version/${encodeURIComponent(versionId)}`);
+  }
+
+  getVersionUnresolvedIssueCount(versionId) {
+    return this.request("GET", `/version/${encodeURIComponent(versionId)}/unresolvedIssueCount`);
+  }
+
+  getVersionRelatedIssueCounts(versionId) {
+    return this.request("GET", `/version/${encodeURIComponent(versionId)}/relatedIssueCounts`);
+  }
+
   getFields() {
     return this.request("GET", "/field");
   }

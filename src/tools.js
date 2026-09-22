@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { JiraApiError } from "./errors.js";
+import { readReleaseBoard } from "./release-board.js";
 import { selectTransition } from "./transition-selector.js";
 import { compactValue, isMutatingTool, parseCsv } from "./utils.js";
 
@@ -381,6 +382,7 @@ export const TOOL_DEFINITIONS = [
   def("jira_get_edit_meta", "metadata", false, "Get issue edit metadata.", { issueKey: p.issueKey }, ["issueKey"]),
   def("jira_list_projects", "projects", false, "List Jira projects visible to the profile."),
   def("jira_get_project", "projects", false, "Get a Jira project by key or id.", { projectKey: { type: "string" } }, ["projectKey"]),
+  def("jira_get_release_board", "releases", false, "Get a complete Jira release board from a project version URL or numeric version id, including paginated direct issues and hydrated Jira subtasks.", { releaseBoard: { type: "string" } }, ["releaseBoard"]),
   def("jira_search", "issues", false, "Search Jira issues with JQL.", { jql: { type: "string" }, maxResults: { type: "number", default: 50 }, startAt: { type: "number", default: 0 }, fields: { type: "array", items: { type: "string" } } }, ["jql"]),
   def("jira_get_issue", "issues", false, "Get issue details by key or id.", { issueKey: p.issueKey, fields: { type: "string" }, expand: { type: "string" } }, ["issueKey"]),
   def("jira_create_issue", "issues", true, "Create a Jira issue. Requires performAction:true.", { projectKey: { type: "string" }, summary: { type: "string" }, issueType: { type: "string", default: "Task" }, description: { type: "string" }, assignee: { type: "string" }, priority: { type: "string" }, labels: { type: "array", items: { type: "string" } }, fields: { type: "object" }, update: { type: "object" }, performAction: p.performAction }, ["projectKey", "summary"]),
@@ -477,6 +479,10 @@ const TOOL_ALIASES = new Map([
   ["issues.search", "jira_search"],
   ["projects.list", "jira_list_projects"],
   ["project.get", "jira_get_project"],
+  ["release", "jira_get_release_board"],
+  ["release.get", "jira_get_release_board"],
+  ["release.board", "jira_get_release_board"],
+  ["version.get", "jira_get_release_board"],
   ["comments.list", "jira_get_comments"],
   ["comments.add", "jira_add_comment"],
   ["comments.update", "jira_update_comment"],
@@ -607,6 +613,8 @@ export async function invokeTool(client, toolName, rawArgs = {}, options = {}) {
       const item = await client.getProject(requireArg(args, "projectKey"));
       return { key: item.key, name: item.name ?? null, id: item.id, description: item.description, projectType: item.projectTypeKey, lead: item.lead?.displayName ?? null };
     }
+    case "jira_get_release_board":
+      return readReleaseBoard(client, { releaseBoard: requireArg(args, "releaseBoard") });
     case "jira_search": {
       const result = await client.search(requireArg(args, "jql"), Number(args.maxResults || 50), Number(args.startAt || 0), args.fields);
       return { total: result.total, startAt: result.startAt, maxResults: result.maxResults, issues: result.issues.map(issueSummary) };
