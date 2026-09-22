@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.2.1
+
+- Omit issue descriptions from aggregate release-board results so credentials
+  or private payloads embedded in Jira descriptions are not copied into bulk
+  agent output or shipment state.
+
 ## 0.2.0
 
 - Add `jira-cli release <url-or-version-id>` and the read-only
