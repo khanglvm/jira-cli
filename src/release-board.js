@@ -1,6 +1,5 @@
 const RELEASE_ISSUE_FIELDS = [
   "summary",
-  "description",
   "status",
   "priority",
   "assignee",
@@ -51,7 +50,6 @@ function normalizeIssue(issue, relationship, parentKey = null) {
     relationship,
     parentKey: text(fields.parent?.key || parentKey),
     summary: text(fields.summary),
-    description: text(fields.description),
     issueType: text(fields.issuetype?.name),
     subtask: fields.issuetype?.subtask ?? null,
     status: text(fields.status?.name),

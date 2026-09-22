@@ -118,6 +118,8 @@ test("readReleaseBoard paginates direct issues and preserves partial child hydra
   });
   assert.deepEqual(result.issueKeys, ["BRAN-1", "BRAN-2", "BRAN-11", "BRAN-12"]);
   assert.equal(result.issues[0].children[0].summary, "Summary BRAN-11");
+  assert.equal(Object.hasOwn(result.issues[0], "description"), false);
+  assert.equal(Object.hasOwn(result.issues[0].children[0], "description"), false);
   assert.equal(result.issues[0].children[1].summary, "Summary BRAN-12");
   assert.equal(result.completeness.complete, false);
   assert.equal(result.completeness.childrenHydrated, 1);
