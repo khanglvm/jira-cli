@@ -116,6 +116,11 @@ const EASY_RECIPES = [
     toolCall: "jira-cli invoke get_issue --args '{\"issueKey\":\"PROJ-123\"}'",
   },
   {
+    name: "release-board",
+    command: "jira-cli release https://jira.example.com/projects/PROJ/versions/12345",
+    toolCall: "jira-cli invoke release.get --args '{\"releaseBoard\":\"https://jira.example.com/projects/PROJ/versions/12345\"}'",
+  },
+  {
     name: "create-task",
     command: "jira-cli create PROJ \"Fix login edge case\" --issue-type Bug --description \"Steps...\" --perform-action",
     toolCall: "jira-cli invoke jira_create_issue --perform-action --args '{\"projectKey\":\"PROJ\",\"summary\":\"Fix login edge case\",\"issueType\":\"Bug\",\"description\":\"Steps...\",\"performAction\":true}'",
@@ -179,6 +184,7 @@ Common agent shortcuts:
   jira-cli mine
   jira-cli search --reported --max-results 20
   jira-cli show PROJ-123
+  jira-cli release https://jira.example.com/projects/PROJ/versions/12345
   jira-cli create PROJ "Fix login edge case" --issue-type Bug --perform-action
   jira-cli assign PROJ-123 me --perform-action
   jira-cli users --board 130 --query khang
@@ -363,6 +369,16 @@ Run 'jira-cli easy' for JSON recipes.
       const { client } = await clientFromOptions(opts);
       const result = await invokeTool(client, "get_issue", { issueKey, fields: local.fields, expand: local.expand });
       await emitWith(cmd, { ok: true, tool: "jira_get_issue", result }, "show");
+    });
+
+  program.command("release <releaseBoard>")
+    .description("Get a Jira release board from a project version URL or numeric version id")
+    .action(async function (releaseBoard) {
+      const cmd = this;
+      const opts = commandOptions(cmd);
+      const { client } = await clientFromOptions(opts);
+      const result = await invokeTool(client, "release.get", { releaseBoard });
+      await emitWith(cmd, { ok: true, tool: "jira_get_release_board", result }, "release");
     });
 
   program.command("create <projectKey> <summary>")

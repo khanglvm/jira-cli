@@ -11,6 +11,15 @@ test("resolveToolName supports short aliases", () => {
   assert.equal(resolveToolName("transitions.apply-by-name"), "jira_transition_issue_by_name");
   assert.equal(resolveToolName("worklogs.add"), "jira_add_worklog");
   assert.equal(resolveToolName("links.add"), "jira_link_issues");
+  assert.equal(resolveToolName("release.get"), "jira_get_release_board");
+});
+
+test("release board tool exposes a one-argument read contract", () => {
+  const tool = TOOL_DEFINITIONS.find((item) => item.name === "jira_get_release_board");
+  assert.equal(tool.group, "releases");
+  assert.equal(tool.mutates, false);
+  assert.deepEqual(tool.inputSchema.required, ["releaseBoard"]);
+  assert.deepEqual(Object.keys(tool.inputSchema.properties), ["releaseBoard"]);
 });
 
 test("mutating tools dry-run without performAction", async () => {

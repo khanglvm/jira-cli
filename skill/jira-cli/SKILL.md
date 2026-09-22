@@ -5,8 +5,9 @@ description: >
   work-item workflows. Activate when the user mentions Jira, tickets, issues,
   bugs, tasks, stories, epics, JQL, issue transitions, project management,
   standup prep, sprint overview, bug triage, "my tickets", "assigned to me",
-  "todo tickets", "move ticket to done", "create a bug", or weekly Jira
-  reporting. This skill replaces MCP startup with short-lived CLI calls.
+  "todo tickets", Jira release boards or project-version links, "move ticket to
+  done", "create a bug", or weekly Jira reporting. This skill replaces MCP
+  startup with short-lived CLI calls.
 ---
 
 # Jira CLI
@@ -47,6 +48,7 @@ jira-cli mine --max-results 20
 jira-cli search --mine --open --max-results 20
 jira-cli search --reported --order-by "priority DESC"
 jira-cli show PROJ-123
+jira-cli release https://jira.example.com/projects/PROJ/versions/12345
 jira-cli create PROJ "Fix login edge case" --issue-type Bug --description "Steps..." --perform-action
 jira-cli assign PROJ-123 me --perform-action
 jira-cli users --board 130 --query khang
@@ -79,6 +81,9 @@ Run `jira-cli tools list` for full JSON contracts.
 - Projects/issues: `jira_list_projects`, `jira_get_project`, `jira_search`,
   `jira_get_issue`, `jira_create_issue`, `jira_update_issue`,
   `jira_assign_issue`, `jira_update_labels`, `jira_delete_issue`.
+- Releases: `jira_get_release_board` accepts a project-version URL or numeric
+  version id and returns the complete release membership with Jira subtasks and
+  completeness evidence.
 - Comments/transitions/attachments: `jira_get_comments`, `jira_add_comment`,
   `jira_update_comment`, `jira_delete_comment`,
   `jira_comment_with_attachments`, `jira_get_transitions`,
@@ -138,6 +143,16 @@ Aliases include `me`, `search`, `get_issue`, `projects.list`, `comments.add`,
 `sprints.list`, `get`, and `request`.
 
 ## Read Workflow
+
+When the user supplies `/projects/<key>/versions/<id>`, use the release command
+directly. It owns version lookup, paginated membership, and child hydration:
+
+```bash
+jira-cli release "https://jira.example.com/projects/PROJ/versions/12345"
+```
+
+Keep every Jira item in the result. Product-specific tooling decides which
+items belong to its scope; ticket titles and issue types do not prove ownership.
 
 1. Verify identity when auth or account selection matters:
    ```bash

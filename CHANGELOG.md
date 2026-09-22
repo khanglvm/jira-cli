@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.2.0
+
+- Add `jira-cli release <url-or-version-id>` and the read-only
+  `jira_get_release_board` tool for complete Jira project-version retrieval.
+- Paginate direct release membership, hydrate Jira subtasks with bounded
+  concurrency, and report partial child failures without losing usable data.
+- Validate release URLs against the configured Jira host and canonical project.
+
 ## 0.1.5
 
 - Refuse ambiguous transition names or destination statuses. Callers receive the
