@@ -123,6 +123,9 @@ function issueProjection(issue, requested) {
         };
         break;
       case "issuelinks": out.issuelinks = (f.issuelinks || []).map(cleanIssueLink); break;
+      case "key":
+      case "id":
+        break;
       default: out[name] = f[name] ?? null;
     }
   }
@@ -131,7 +134,16 @@ function issueProjection(issue, requested) {
 
 function issueView(issue, fields) {
   const requested = fieldList(fields);
-  return requested.length ? issueProjection(issue, requested) : issueSummary(issue);
+  if (!requested.length) return issueSummary(issue);
+  // Jira field specs such as *all, *navigable or -description select sets, not names.
+  if (requested.some((name) => name.startsWith("*") || name.startsWith("-"))) {
+    const f = issue.fields || {};
+    const out = issueSummary(issue);
+    if (f.comment) out.comment = issueProjection(issue, ["comment"]).comment;
+    if (f.issuelinks) out.issuelinks = (f.issuelinks || []).map(cleanIssueLink);
+    return out;
+  }
+  return issueProjection(issue, requested);
 }
 
 function cleanAttachment(a) {

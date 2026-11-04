@@ -467,6 +467,28 @@ test("search honors requested fields", async () => {
   assert.deepEqual(result.issues[0], { key: "ABC-1", id: "1", summary: "S", created: "d" });
 });
 
+test("requested key and id keep their top-level values", async () => {
+  const client = { async getIssue(key) { return { key, id: "1", fields: { summary: "S" } }; } };
+  const result = await invokeTool(client, "get_issue", { issueKey: "ABC-1", fields: "key,id,summary" });
+  assert.deepEqual(result, { key: "ABC-1", id: "1", summary: "S" });
+});
+
+test("field set specs such as *all fall back to the summary shape", async () => {
+  const client = {
+    async getIssue(key) {
+      return { key, id: "1", fields: { summary: "S", project: { key: "ABC" }, comment: { total: 0, comments: [] } } };
+    },
+  };
+  for (const fields of ["*all", "*navigable,-description"]) {
+    const result = await invokeTool(client, "get_issue", { issueKey: "ABC-1", fields });
+    assert.equal(result.key, "ABC-1");
+    assert.equal(result.summary, "S");
+    assert.equal(result.project, "ABC");
+    assert.equal(result.comment.total, 0);
+    assert.equal("*all" in result, false);
+  }
+});
+
 test("dry-run says the flag is missing when args already include performAction", async () => {
   const result = await invokeTool({}, "jira_add_comment", { issueKey: "ABC-1", body: "x", performAction: true });
   assert.equal(result.dryRun, true);
