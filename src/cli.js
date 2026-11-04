@@ -6,7 +6,7 @@ import { ResultStore } from "./result-store.js";
 import { TOOL_DEFINITIONS, invokeTool, resolveToolName } from "./tools.js";
 import { buildProfile, defaultCacheDir, defaultConfigPath, getProfile, listProfiles, loadConfig, redactProfile, saveConfig } from "./config-store.js";
 import { hydrateProfileFromKeychain, removeProfileFromKeychain, secureProfileForStorage } from "./secure-keyring.js";
-import { parseCsv, readJsonArg, readTextArg, toInteger } from "./utils.js";
+import { parseCsv, readJsonArg, readTextArg, splitJqlOrderBy, toInteger } from "./utils.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json");
@@ -86,6 +86,7 @@ function cacheFromOptions(opts, profile) {
 }
 
 async function emitWith(command, value, label) {
+  if (value?.result?.dryRun === true && value.dryRun === undefined) value = { ...value, dryRun: true };
   await storeFrom(commandOptions(command)).emit(value, { label });
 }
 
@@ -339,16 +340,16 @@ Run 'jira-cli easy' for JSON recipes.
       const opts = commandOptions(cmd);
       const local = localOptions(cmd);
       const clauses = [];
-      if (jql) clauses.push(`(${jql})`);
+      const userJql = splitJqlOrderBy(jql);
+      if (userJql.where) clauses.push(`(${userJql.where})`);
       if (local.mine) clauses.push("assignee = currentUser()");
       if (local.reported) clauses.push("reporter = currentUser()");
       if (local.watched) clauses.push("issue in watchedIssues()");
       if (local.open) clauses.push("resolution IS EMPTY");
       if (local.project) clauses.push(`project = ${local.project}`);
       if (local.statusCategory) clauses.push(`statusCategory = "${local.statusCategory}"`);
-      const finalJql = `${clauses.length ? clauses.join(" AND ") : "ORDER BY updated DESC"}`.includes("ORDER BY")
-        ? (clauses.length ? clauses.join(" AND ") : "ORDER BY updated DESC")
-        : `${clauses.join(" AND ")} ORDER BY ${local.orderBy}`;
+      const orderBy = userJql.orderBy || local.orderBy;
+      const finalJql = clauses.length ? `${clauses.join(" AND ")} ORDER BY ${orderBy}` : `ORDER BY ${orderBy}`;
       const { client } = await clientFromOptions(opts);
       const result = await invokeTool(client, "search", {
         jql: finalJql,
@@ -359,8 +360,8 @@ Run 'jira-cli easy' for JSON recipes.
     });
 
   program.command("show <issueKey>")
-    .description("Quick show one issue")
-    .option("--fields <fields>", "Comma-separated Jira fields")
+    .description("Quick show one issue. Without --fields returns key, id, summary, description, status, statusCategory, priority, assignee, assigneeName, reporter, issueType, project, labels, components, fixVersions, created, updated. With --fields returns key, id and only the requested fields; comment and issuelinks are included when requested")
+    .option("--fields <fields>", "Comma-separated Jira fields to return (e.g. summary,status,comment,issuelinks)")
     .option("--expand <expand>", "Jira expand value")
     .action(async function (issueKey) {
       const cmd = this;
@@ -752,7 +753,7 @@ Run 'jira-cli easy' for JSON recipes.
         try {
           const tool = resolveToolName(op.tool);
           const result = await invokeTool(client, tool, op.args || {}, { performAction: !!local.performAction && !!op.args?.performAction, cache });
-          results.push({ index, ok: true, tool, result });
+          results.push({ index, ok: true, ...(result?.dryRun === true ? { dryRun: true } : {}), tool, result });
         } catch (err) {
           results.push({ index, ok: false, tool: op.tool, error: err?.name || "Error", message: err?.message || String(err), details: err?.details });
         }

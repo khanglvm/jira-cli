@@ -182,7 +182,7 @@ export class JiraClient {
       jql,
       maxResults,
       startAt,
-      fields: fields || ["summary", "status", "assignee", "priority", "issuetype"],
+      fields: fields || ["summary", "status", "assignee", "reporter", "priority", "issuetype", "project", "labels", "components", "fixVersions", "created", "updated"],
     });
   }
 

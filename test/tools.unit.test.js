@@ -419,3 +419,66 @@ test("attachment download saves file without base64 by default", async () => {
   assert.equal(result.base64, undefined);
   assert.equal(result.bytes, 2);
 });
+
+test("get_issue returns only requested fields, including comments and issue links", async () => {
+  let requested;
+  const client = {
+    async getIssue(key, fields) {
+      requested = fields;
+      return {
+        key,
+        id: "1",
+        fields: {
+          summary: "S",
+          issuetype: { name: "Bug" },
+          comment: { total: 1, comments: [{ id: "9", author: { displayName: "A", name: "a" }, created: "c", updated: "u", body: "hi" }] },
+          issuelinks: [{ id: "5", type: { name: "Blocks", inward: "is blocked by", outward: "blocks" }, outwardIssue: { key: "ABC-2", fields: { summary: "T", status: { name: "Open" } } } }],
+        },
+      };
+    },
+  };
+  const result = await invokeTool(client, "get_issue", { issueKey: "ABC-1", fields: "summary,comment,issuetype,issuelinks" });
+  assert.equal(requested, "summary,comment,issuetype,issuelinks");
+  assert.equal(result.issueType, "Bug");
+  assert.equal(result.comment.total, 1);
+  assert.equal(result.comment.comments[0].body, "hi");
+  assert.equal(result.issuelinks[0].issue.key, "ABC-2");
+  assert.equal(result.issuelinks[0].direction, "outward");
+  assert.equal("reporter" in result, false);
+});
+
+test("get_issue without fields keeps the summary shape", async () => {
+  const client = { async getIssue(key) { return { key, id: "1", fields: { summary: "S" } }; } };
+  const result = await invokeTool(client, "get_issue", { issueKey: "ABC-1" });
+  assert.equal(result.summary, "S");
+  assert.equal(result.project, null);
+});
+
+test("search honors requested fields", async () => {
+  let sent;
+  const client = {
+    async search(jql, max, start, fields) {
+      sent = fields;
+      return { total: 1, startAt: 0, maxResults: 5, issues: [{ key: "ABC-1", id: "1", fields: { summary: "S", created: "d" } }] };
+    },
+  };
+  const result = await invokeTool(client, "jira_search", { jql: "project = ABC", fields: ["summary", "created"] });
+  assert.deepEqual(sent, ["summary", "created"]);
+  assert.deepEqual(result.issues[0], { key: "ABC-1", id: "1", summary: "S", created: "d" });
+});
+
+test("dry-run says the flag is missing when args already include performAction", async () => {
+  const result = await invokeTool({}, "jira_add_comment", { issueKey: "ABC-1", body: "x", performAction: true });
+  assert.equal(result.dryRun, true);
+  assert.match(result.message, /--perform-action flag is missing/);
+  const plain = await invokeTool({}, "jira_add_comment", { issueKey: "ABC-1", body: "x" });
+  assert.doesNotMatch(plain.message, /flag is missing/);
+});
+
+test("splitJqlOrderBy separates a trailing ORDER BY", async () => {
+  const { splitJqlOrderBy } = await import("../src/utils.js");
+  assert.deepEqual(splitJqlOrderBy("filter = 1 AND a = currentUser() ORDER BY key ASC"), { where: "filter = 1 AND a = currentUser()", orderBy: "key ASC" });
+  assert.deepEqual(splitJqlOrderBy("project = X"), { where: "project = X", orderBy: "" });
+  assert.deepEqual(splitJqlOrderBy('summary ~ "order by me" order by created DESC'), { where: 'summary ~ "order by me"', orderBy: "created DESC" });
+  assert.deepEqual(splitJqlOrderBy("ORDER BY key"), { where: "", orderBy: "key" });
+});
