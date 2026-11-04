@@ -13,13 +13,15 @@ function requireArg(args, key) {
   return args[key];
 }
 
-function dryRun(tool, args, operation) {
+function dryRun(tool, args, operation, flagMissing = false) {
   return {
     ok: true,
     dryRun: true,
     tool,
     wouldPerform: operation,
-    message: "Mutation not executed. Pass --perform-action and include performAction:true in --args.",
+    message: flagMissing
+      ? "Mutation NOT executed: args include performAction:true but the --perform-action flag is missing. Re-run with --perform-action."
+      : "Mutation not executed. Pass --perform-action and include performAction:true in --args.",
     args: compactValue(args),
   };
 }
@@ -56,6 +58,92 @@ function issueSummary(issue) {
     created: issue.fields?.created ?? null,
     updated: issue.fields?.updated ?? null,
   };
+}
+
+function fieldList(fields) {
+  const list = Array.isArray(fields) ? fields : String(fields ?? "").split(",");
+  return list.map((item) => String(item).trim()).filter(Boolean);
+}
+
+function cleanComment(comment) {
+  return {
+    id: comment.id,
+    author: comment.author?.displayName ?? null,
+    authorName: comment.author?.name ?? null,
+    created: comment.created ?? null,
+    updated: comment.updated ?? null,
+    body: comment.body ?? null,
+  };
+}
+
+function cleanIssueLink(link) {
+  const inward = link.inwardIssue;
+  const other = inward || link.outwardIssue;
+  return {
+    id: link.id,
+    type: link.type?.name ?? null,
+    direction: inward ? "inward" : "outward",
+    description: (inward ? link.type?.inward : link.type?.outward) ?? null,
+    issue: other
+      ? { key: other.key, summary: other.fields?.summary ?? null, status: other.fields?.status?.name ?? null }
+      : null,
+  };
+}
+
+// Project an issue to the requested fields only. Known fields use the same
+// names as issueSummary; comment and issuelinks are cleaned; others pass through.
+function issueProjection(issue, requested) {
+  const f = issue.fields || {};
+  const out = { key: issue.key, id: issue.id };
+  for (const name of requested) {
+    switch (name.toLowerCase()) {
+      case "summary": out.summary = f.summary ?? null; break;
+      case "description": out.description = f.description ?? null; break;
+      case "status":
+        out.status = f.status?.name ?? null;
+        out.statusCategory = f.status?.statusCategory?.name ?? null;
+        break;
+      case "priority": out.priority = f.priority?.name ?? null; break;
+      case "assignee":
+        out.assignee = f.assignee?.displayName ?? null;
+        out.assigneeName = f.assignee?.name ?? null;
+        break;
+      case "reporter": out.reporter = f.reporter?.displayName ?? null; break;
+      case "issuetype": out.issueType = f.issuetype?.name ?? null; break;
+      case "project": out.project = f.project?.key ?? null; break;
+      case "labels": out.labels = f.labels ?? []; break;
+      case "components": out.components = (f.components || []).map((item) => item.name); break;
+      case "fixversions": out.fixVersions = (f.fixVersions || []).map((item) => item.name); break;
+      case "created": out.created = f.created ?? null; break;
+      case "updated": out.updated = f.updated ?? null; break;
+      case "comment":
+        out.comment = {
+          total: f.comment?.total ?? (f.comment?.comments || []).length,
+          comments: (f.comment?.comments || []).map(cleanComment),
+        };
+        break;
+      case "issuelinks": out.issuelinks = (f.issuelinks || []).map(cleanIssueLink); break;
+      case "key":
+      case "id":
+        break;
+      default: out[name] = f[name] ?? null;
+    }
+  }
+  return out;
+}
+
+function issueView(issue, fields) {
+  const requested = fieldList(fields);
+  if (!requested.length) return issueSummary(issue);
+  // Jira field specs such as *all, *navigable or -description select sets, not names.
+  if (requested.some((name) => name.startsWith("*") || name.startsWith("-"))) {
+    const f = issue.fields || {};
+    const out = issueSummary(issue);
+    if (f.comment) out.comment = issueProjection(issue, ["comment"]).comment;
+    if (f.issuelinks) out.issuelinks = (f.issuelinks || []).map(cleanIssueLink);
+    return out;
+  }
+  return issueProjection(issue, requested);
 }
 
 function cleanAttachment(a) {
@@ -557,13 +645,14 @@ export function resolveToolName(name) {
 export async function invokeTool(client, toolName, rawArgs = {}, options = {}) {
   const tool = resolveToolName(toolName);
   const args = { ...(rawArgs || {}) };
+  const argsRequestedAction = args.performAction === true;
   if (options.performAction && args.performAction === true) {
     args.performAction = true;
   } else if (isMutatingTool(tool)) {
     args.performAction = false;
   }
   if (isMutatingTool(tool) && !args.performAction) {
-    return dryRun(tool, args, tool.replace(/^jira_/, ""));
+    return dryRun(tool, args, tool.replace(/^jira_/, ""), argsRequestedAction && !options.performAction);
   }
 
   switch (tool) {
@@ -616,11 +705,11 @@ export async function invokeTool(client, toolName, rawArgs = {}, options = {}) {
     case "jira_get_release_board":
       return readReleaseBoard(client, { releaseBoard: requireArg(args, "releaseBoard") });
     case "jira_search": {
-      const result = await client.search(requireArg(args, "jql"), Number(args.maxResults || 50), Number(args.startAt || 0), args.fields);
-      return { total: result.total, startAt: result.startAt, maxResults: result.maxResults, issues: result.issues.map(issueSummary) };
+      const result = await client.search(requireArg(args, "jql"), Number(args.maxResults || 50), Number(args.startAt || 0), fieldList(args.fields).length ? fieldList(args.fields) : undefined);
+      return { total: result.total, startAt: result.startAt, maxResults: result.maxResults, issues: result.issues.map((issue) => issueView(issue, args.fields)) };
     }
     case "jira_get_issue":
-      return issueSummary(await client.getIssue(requireArg(args, "issueKey"), args.fields, args.expand));
+      return issueView(await client.getIssue(requireArg(args, "issueKey"), fieldList(args.fields).join(",") || undefined, args.expand), args.fields);
     case "jira_create_issue": {
       const fields = args.fields ? { ...args.fields } : {};
       if (args.projectKey) fields.project = { key: args.projectKey };

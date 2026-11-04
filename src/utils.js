@@ -126,3 +126,28 @@ export function redactSecret(secret) {
   }
   return `${value.slice(0, 4)}...${value.slice(-4)}`;
 }
+
+// Split a trailing ORDER BY clause off a JQL string. Quoted strings are skipped
+// so a literal like "ORDER BY" inside a value is not treated as a clause.
+export function splitJqlOrderBy(jql) {
+  const text = String(jql ?? "");
+  let quote = null;
+  let found = -1;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (quote) {
+      if (ch === "\\") i += 1;
+      else if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (/^order\s+by\b/i.test(text.slice(i)) && (i === 0 || /[\s)]/.test(text[i - 1]))) {
+      found = i;
+      break;
+    }
+  }
+  if (found < 0) return { where: text.trim(), orderBy: "" };
+  return {
+    where: text.slice(0, found).trim(),
+    orderBy: text.slice(found).replace(/^order\s+by\s*/i, "").trim(),
+  };
+}

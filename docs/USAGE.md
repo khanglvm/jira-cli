@@ -23,6 +23,7 @@ jira-cli mine --max-results 20
 jira-cli search --mine --open --max-results 20
 jira-cli search --reported --order-by "priority DESC"
 jira-cli show PROJ-123
+jira-cli show PROJ-123 --fields summary,status,comment,issuelinks
 jira-cli release https://jira.example.com/projects/PROJ/versions/12345
 jira-cli create PROJ "Fix login edge case" --issue-type Bug --description "Steps..." --perform-action
 jira-cli assign PROJ-123 me --perform-action
@@ -50,6 +51,11 @@ Mutations are dry-run by default:
 ```bash
 jira-cli invoke jira_add_comment --args '{"issueKey":"PROJ-123","body":"Investigating."}'
 ```
+
+A dry run is reported at the top level as `"dryRun": true` (with `ok: true`,
+since the call itself succeeded). If the args include `performAction:true` but
+`--perform-action` is missing, the message says so. Check `dryRun` before
+assuming a write happened.
 
 Execute a mutation only with an explicit action flag:
 

@@ -44,6 +44,12 @@ jira-cli release https://jira.example.com/projects/PROJ/versions/12345
 jira-cli search --reported --order-by "priority DESC"
 ```
 
+`show` returns key, id, summary, description, status, priority, assignee,
+reporter, issue type, project, labels, components, fix versions, created and
+updated. Pass `--fields summary,status,comment,issuelinks` to get only those
+fields (plus key and id); `comment` returns the comments and `issuelinks` the
+linked issues.
+
 Replace `PROJ-123` with a real issue key. Changes are dry runs by default, so
 you can preview a comment before posting it:
 

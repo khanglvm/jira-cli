@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 0.2.2
+
+- `show --fields` and `jira_get_issue`/`jira_search` `fields` now return the
+  requested fields, including `comment` and `issuelinks`. Before, the output was
+  always the fixed summary shape, so fields outside the request showed as null.
+- `search` default fields now include project, created, updated and reporter,
+  which previously came back null.
+- `search` accepts a trailing `ORDER BY` in the JQL instead of failing with HTTP
+  400; it takes precedence over `--order-by`.
+- Dry-run results are flagged with top-level `dryRun: true`, and the message
+  says when `performAction:true` was passed without `--perform-action`.
+  `ok` stays true because the call itself succeeded.
+- Document the fields `show` returns.
+
 ## 0.2.1
 
 - Omit issue descriptions from aggregate release-board results so credentials
