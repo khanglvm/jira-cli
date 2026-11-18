@@ -211,6 +211,7 @@ Run 'jira-cli easy' for JSON recipes.
     .option("--name <name>", "Display name")
     .option("--description <text>", "Profile description")
     .option("--keyword <csv>", "Comma-separated routing keywords")
+    .option("--supplementary-characters <mode>", "unicode (default) or entities: send emoji in comments as numeric entities for Jira databases without 4-byte UTF-8")
     .option("--default", "Set as default profile")
     .action(async function (id) {
       const cmd = this;

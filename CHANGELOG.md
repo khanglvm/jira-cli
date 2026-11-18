@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 0.2.3
+
+- Add the profile setting `supplementaryCharacters`. With `"entities"`, jira-cli
+  sends characters above U+FFFF (most emoji, such as 🤖) as decimal HTML
+  entities (`&#129302;`) in comment bodies, transition and edit
+  `update.comment` operations, worklog comments and issue-link comments. Jira
+  Server databases that store only 3-byte UTF-8 answer HTTP 500 to these writes
+  and save nothing. The page still shows the emoji, except inside `{code}` or
+  `{noformat}`, where a real emoji written there shows as entity text. Profiles
+  without the setting send text unchanged. Set it with
+  `profile add --supplementary-characters entities`.
+- Comment reads (`jira_get_comments`, the `comment` field of `show`/`search`)
+  and worklog reads keep the stored text in `body` or `comment`. When that text
+  holds entities above U+FFFF outside `{code}` and `{noformat}` blocks, the read
+  adds `decodedBody` or `decodedComment` with the text as the page shows it.
+
 ## 0.2.2
 
 - `show --fields` and `jira_get_issue`/`jira_search` `fields` now return the

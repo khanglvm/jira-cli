@@ -6,6 +6,26 @@
 
 Credentials are stored in the OS keychain by default. Set `JIRA_CLI_KEYCHAIN_MODE=optional` to fall back to inline config if keychain access is unavailable, or `disabled` to store inline.
 
+## Emoji on Jira databases without 4-byte UTF-8
+
+A Jira Server whose database stores only 3-byte UTF-8 (MySQL `utf8`) answers
+HTTP 500 to a comment that contains a character above U+FFFF, such as 🤖, and
+saves nothing. Turn on entity encoding for that profile:
+
+```bash
+jira-cli profile add work --base-url https://jira.example.com --username me --password "$JIRA_PASSWORD" \
+  --supplementary-characters entities
+```
+
+The profile then sends those characters as decimal entities (`&#129302;`) in
+comment bodies, transition and edit `update.comment` operations, worklog
+comments and issue-link comments. The Jira page shows the emoji, except inside
+`{code}` and `{noformat}` blocks, where the entity shows as text. Comment and
+worklog reads keep the stored text in `body` or `comment` and add `decodedBody`
+or `decodedComment` when the page would show it differently. Profiles without
+the setting send text unchanged. `profile add` replaces the whole profile, so
+pass the option again when you update a profile that uses it.
+
 ## Use
 
 ```bash

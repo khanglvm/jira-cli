@@ -38,6 +38,14 @@ If no profile exists, configure one with `jira-cli profile add <id> --base-url .
 - Use `jira-cli batch --ops '<json-array>'` for independent reads.
 - Use `--profile <id>` when multiple Jira accounts/workspaces exist.
 - Use `--args-file` for long comments, descriptions, or batch payloads.
+- A profile with `supplementaryCharacters: "entities"` sends emoji in comment,
+  transition, edit `update.comment`, worklog and link comments as numeric
+  entities (`🤖` → `&#129302;`), which the Jira page shows as the emoji. Comment
+  and worklog reads return the stored text in `body`/`comment` and add
+  `decodedBody`/`decodedComment` when the page would show it differently. Text
+  inside `{code}` or `{noformat}` stays literal, so an emoji written there shows
+  as entity text. Summaries, descriptions and raw `jira_request` bodies are not
+  encoded.
 - Do not execute mutating calls unless the user clearly requested the mutation.
 
 ## Quick Commands

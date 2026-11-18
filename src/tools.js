@@ -5,6 +5,7 @@ import { JiraApiError } from "./errors.js";
 import { readReleaseBoard } from "./release-board.js";
 import { selectTransition } from "./transition-selector.js";
 import { compactValue, isMutatingTool, parseCsv } from "./utils.js";
+import { decodedView } from "./wiki-text.js";
 
 function requireArg(args, key) {
   if (args[key] === undefined || args[key] === null || args[key] === "") {
@@ -65,6 +66,8 @@ function fieldList(fields) {
   return list.map((item) => String(item).trim()).filter(Boolean);
 }
 
+// `body` is the stored text; `decodedBody` appears only when the Jira page
+// would show it differently (see wiki-text.js).
 function cleanComment(comment) {
   return {
     id: comment.id,
@@ -73,6 +76,7 @@ function cleanComment(comment) {
     created: comment.created ?? null,
     updated: comment.updated ?? null,
     body: comment.body ?? null,
+    ...decodedView("decodedBody", comment.body),
   };
 }
 
@@ -166,6 +170,7 @@ function cleanWorklog(worklog) {
     author: userSummary(worklog.author),
     updateAuthor: userSummary(worklog.updateAuthor),
     comment: worklog.comment ?? null,
+    ...decodedView("decodedComment", worklog.comment),
     started: worklog.started ?? null,
     timeSpent: worklog.timeSpent ?? null,
     timeSpentSeconds: worklog.timeSpentSeconds ?? null,
@@ -764,7 +769,7 @@ export async function invokeTool(client, toolName, rawArgs = {}, options = {}) {
       return { success: true, message: `Issue ${args.issueKey} deleted successfully` };
     case "jira_get_comments": {
       const result = await client.getComments(requireArg(args, "issueKey"));
-      return { total: result.total, comments: result.comments.map((item) => ({ id: item.id, author: userSummary(item.author), body: item.body, created: item.created, updated: item.updated })) };
+      return { total: result.total, comments: result.comments.map((item) => ({ id: item.id, author: userSummary(item.author), body: item.body, ...decodedView("decodedBody", item.body), created: item.created, updated: item.updated })) };
     }
     case "jira_add_comment": {
       const comment = await client.addComment(requireArg(args, "issueKey"), requireArg(args, "body"));

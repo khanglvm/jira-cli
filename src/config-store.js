@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { CliError } from "./errors.js";
 import { parseCsv, redactSecret } from "./utils.js";
+import { SUPPLEMENTARY_CHARACTER_MODES } from "./wiki-text.js";
 
 export const CONFIG_VERSION = 1;
 
@@ -98,6 +99,7 @@ export function buildProfile({
   password,
   apiVersion = "2",
   timeoutMs = 30000,
+  supplementaryCharacters,
 }) {
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
   if (!id) {
@@ -109,6 +111,9 @@ export function buildProfile({
   if (!password) {
     throw new Error("password is required");
   }
+  if (supplementaryCharacters !== undefined && !SUPPLEMENTARY_CHARACTER_MODES.includes(supplementaryCharacters)) {
+    throw new Error(`supplementaryCharacters must be one of: ${SUPPLEMENTARY_CHARACTER_MODES.join(", ")}`);
+  }
   return {
     name: name || id,
     description: description || undefined,
@@ -116,6 +121,7 @@ export function buildProfile({
     baseUrl: normalizedBaseUrl,
     apiVersion: String(apiVersion || "2"),
     timeoutMs: Number(timeoutMs) || 30000,
+    supplementaryCharacters: supplementaryCharacters || undefined,
     auth: {
       type: "basic",
       username,

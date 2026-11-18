@@ -1,9 +1,15 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { JiraApiError } from "./errors.js";
+import { commentTextEncoder, encodeCommentOperations } from "./wiki-text.js";
 
 function apiBaseUrl(profile, apiName = "api", apiVersion) {
   return `${profile.baseUrl.replace(/\/$/, "")}/rest/${apiName}/${apiVersion || profile.apiVersion || "2"}`;
+}
+
+// A worklog comment is stored like an issue comment, so it gets the same encoding.
+function withEncodedComment(worklog, encode) {
+  return worklog?.comment === undefined ? worklog : { ...worklog, comment: encode(worklog.comment) };
 }
 
 function authBaseUrl(profile) {
@@ -14,6 +20,8 @@ export class JiraClient {
   constructor(profile) {
     this.profile = profile;
     this.authHeader = `Basic ${Buffer.from(`${profile.auth.username}:${profile.auth.password}`).toString("base64")}`;
+    // Every comment-bearing write passes its comment text through this encoder.
+    this.encodeCommentText = commentTextEncoder(profile);
   }
 
   async request(method, path, body, options = {}) {
@@ -125,7 +133,8 @@ export class JiraClient {
   }
 
   editIssue(issueKey, payload, options = {}) {
-    return this.request("PUT", `/issue/${encodeURIComponent(issueKey)}`, payload, {
+    const body = payload?.update ? { ...payload, update: encodeCommentOperations(payload.update, this.encodeCommentText) } : payload;
+    return this.request("PUT", `/issue/${encodeURIComponent(issueKey)}`, body, {
       query: { notifyUsers: options.notifyUsers },
     });
   }
@@ -140,11 +149,11 @@ export class JiraClient {
   }
 
   addComment(issueKey, body) {
-    return this.request("POST", `/issue/${encodeURIComponent(issueKey)}/comment`, { body });
+    return this.request("POST", `/issue/${encodeURIComponent(issueKey)}/comment`, { body: this.encodeCommentText(body) });
   }
 
   updateComment(issueKey, commentId, body) {
-    return this.request("PUT", `/issue/${encodeURIComponent(issueKey)}/comment/${encodeURIComponent(commentId)}`, { body });
+    return this.request("PUT", `/issue/${encodeURIComponent(issueKey)}/comment/${encodeURIComponent(commentId)}`, { body: this.encodeCommentText(body) });
   }
 
   deleteComment(issueKey, commentId) {
@@ -169,6 +178,10 @@ export class JiraClient {
     }
     if (update) {
       body.update = { ...(body.update || {}), ...update };
+    }
+    // Encode after the merge, so whichever comment operations are sent get it.
+    if (body.update) {
+      body.update = encodeCommentOperations(body.update, this.encodeCommentText);
     }
     return this.request("POST", `/issue/${encodeURIComponent(issueKey)}/transitions`, body);
   }
@@ -331,7 +344,7 @@ export class JiraClient {
   }
 
   addWorklog(issueKey, worklog, options = {}) {
-    return this.request("POST", `/issue/${encodeURIComponent(issueKey)}/worklog`, worklog, {
+    return this.request("POST", `/issue/${encodeURIComponent(issueKey)}/worklog`, withEncodedComment(worklog, this.encodeCommentText), {
       query: {
         adjustEstimate: options.adjustEstimate,
         newEstimate: options.newEstimate,
@@ -341,7 +354,7 @@ export class JiraClient {
   }
 
   updateWorklog(issueKey, worklogId, worklog, options = {}) {
-    return this.request("PUT", `/issue/${encodeURIComponent(issueKey)}/worklog/${encodeURIComponent(worklogId)}`, worklog, {
+    return this.request("PUT", `/issue/${encodeURIComponent(issueKey)}/worklog/${encodeURIComponent(worklogId)}`, withEncodedComment(worklog, this.encodeCommentText), {
       query: {
         adjustEstimate: options.adjustEstimate,
         newEstimate: options.newEstimate,
@@ -368,7 +381,8 @@ export class JiraClient {
   }
 
   linkIssues(payload) {
-    return this.request("POST", "/issueLink", payload);
+    const comment = payload.comment ? { ...payload.comment, body: this.encodeCommentText(payload.comment.body) } : payload.comment;
+    return this.request("POST", "/issueLink", { ...payload, comment });
   }
 
   deleteIssueLink(linkId) {

@@ -59,6 +59,12 @@ jira-cli comment PROJ-123 --body "Investigating the login issue." --perform-acti
 ```
 
 Add `--inline-image screenshot.png` to include a screenshot in a comment.
+Some Jira Server databases cannot store emoji and other characters above U+FFFF
+and answer HTTP 500 to a comment that contains one. For such a server, add the
+profile with `--supplementary-characters entities`: jira-cli then sends those
+characters as numeric entities such as `&#129302;`, which the Jira page shows as
+the emoji. Comment and worklog reads add a `decodedBody` or `decodedComment`
+field with the emoji restored next to the stored text.
 Profiles let you switch between Jira workspaces with `jira-cli profile use work`.
 
 ## For AI agents
