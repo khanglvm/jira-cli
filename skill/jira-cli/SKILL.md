@@ -14,6 +14,8 @@ description: >
 
 Use `jira-cli` instead of starting a Jira MCP server.
 
+Full documentation, with every command, option, tool and output shape, is one plain-text file: https://docs.khangle.dev/jira-cli/llms-full.txt
+
 ## Bootstrap
 
 Check setup only when needed:
@@ -233,7 +235,7 @@ jira-cli invoke jira_request --perform-action --args '{"method":"POST","path":"/
 
 ## Output
 
-Results are JSON. Large payloads may be offloaded to temp files. Inspect them
+Results are JSON on stdout, and errors are JSON on stderr with exit code 1. A dry run has `dryRun: true` at the top level. Large payloads may be offloaded to temp files. Inspect them
 with:
 
 ```bash
