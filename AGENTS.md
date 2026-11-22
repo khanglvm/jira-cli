@@ -15,7 +15,7 @@ jira-cli is a Node.js ESM command line tool for self-hosted Jira Server 7.x (RES
 
 - `npm test` runs the unit tests in `test/`.
 - `npm run check` runs `jira-cli --help` as a smoke test.
-- Any change to `package.json` or the files it publishes goes out through the publish workflow, so do not edit `package.json` or `.github/workflows/npm-publish.yml` for a docs change.
+- A push to `main` that changes the `version` in `package.json` publishes to npm through `.github/workflows/npm-publish.yml`. Docs changes ship the same way (see Docs).
 
 ## Docs
 
@@ -26,5 +26,6 @@ jira-cli is a Node.js ESM command line tool for self-hosted Jira Server 7.x (RES
 - README sections between `<!-- docs:begin PAGE -->` and `<!-- docs:end -->` are generated. Edit the page in `docs/`, then run `node scripts/docs-readme.mjs`.
 - Run `node scripts/docs-readme.mjs --check` before committing. CI runs the same check.
 - Do not move or rename a published page without updating `docs/meta.json` and links to it.
+- A change is finished when GitHub, docs.khangle.dev and the npm page all show it (the `doc-sync` workflow). npm shows the README of the latest published version only, so a change to README.md ships with a patch release: bump `version` in `package.json`, add the CHANGELOG entry and push to `main`; the publish workflow ships it. Then run `node scripts/docs-surfaces.mjs` until it exits 0.
 
 Command and tool facts also live in `skill/jira-cli/SKILL.md`; keep it in step with the pages. `docs/tools.md` lists every tool in `TOOL_DEFINITIONS`, so a new tool needs a row there. Each page opens with an H1 and a one or two sentence summary, which the site uses as its description. Use plain ASCII punctuation (no em dashes).

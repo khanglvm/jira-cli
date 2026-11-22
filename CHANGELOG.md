@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.2.4
+
+- Ship the current README and agent skill, so the npm page matches GitHub and
+  docs.khangle.dev, which now publishes the guides.
+
 ## 0.2.3
 
 - Add the profile setting `supplementaryCharacters`. With `"entities"`, jira-cli
